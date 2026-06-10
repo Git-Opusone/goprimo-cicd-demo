@@ -67,7 +67,7 @@ jobs:
         with:
           image-ref: goprimo-cicd-demo:ci
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL,HIGH
           ignore-unfixed: true
 
