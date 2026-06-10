@@ -130,3 +130,4 @@ jobs:
             curl -f http://localhost/health
 
             docker image prune -f
+
