@@ -1,6 +1,10 @@
-name: CI - Build, Push, Deploy
+name: CI - Build and Push Docker Image
 
 on:
+  pull_request:
+    branches:
+      - main
+
   push:
     branches:
       - main
@@ -11,10 +15,10 @@ permissions:
   security-events: write
 
 env:
-  IMAGE_NAME: ghcr.io/git-opusone/goprimo-cicd-demo
+  IMAGE_NAME: goprimo-cicd-demo
 
 jobs:
-  ci-build-push:
+  ci:
     name: Code Quality, Test, Security, Docker Build
     runs-on: ubuntu-latest
 
@@ -44,84 +48,61 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
-        continue-on-error: true
+          failure-threshold: error
 
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME:latest .
-          docker tag $IMAGE_NAME:latest $IMAGE_NAME:${{ github.sha }}
+          docker build -t $IMAGE_NAME:ci .
 
       - name: Run container smoke test
         run: |
-          docker run -d --name smoke-test -p 3000:3000 $IMAGE_NAME:latest
+          docker run -d --name smoke-test-app -p 3000:3000 $IMAGE_NAME:ci
           sleep 5
           curl -f http://localhost:3000/health
-          docker stop smoke-test
-          docker rm smoke-test
+          docker stop smoke-test-app
+          docker rm smoke-test-app
 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:latest
+          image-ref: goprimo-cicd-demo:ci
           format: table
+          exit-code: 0
           severity: CRITICAL,HIGH
-        continue-on-error: true
+          ignore-unfixed: true
+
+      - name: Convert repository owner to lowercase
+        if: github.event_name == 'push'
+        run: |
+          echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Login to GitHub Container Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push Docker image to GHCR
+      - name: Tag Docker image for GHCR
+        if: github.event_name == 'push'
         run: |
-          docker push $IMAGE_NAME:latest
-          docker push $IMAGE_NAME:${{ github.sha }}
+          docker tag $IMAGE_NAME:ci ghcr.io/$OWNER_LC/$IMAGE_NAME:latest
+          docker tag $IMAGE_NAME:ci ghcr.io/$OWNER_LC/$IMAGE_NAME:${{ github.sha }}
 
-  deploy-uat:
-    name: Deploy to UAT VM
-    runs-on: ubuntu-latest
-    needs: ci-build-push
-
-    steps:
-      - name: Deploy latest image to UAT over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -e
-
-            IMAGE="ghcr.io/git-opusone/goprimo-cicd-demo:latest"
-            CONTAINER="goprimo-cicd-demo-uat"
-
-            docker network create cicd-net 2>/dev/null || true
-
-            docker pull "$IMAGE"
-
-            docker stop "$CONTAINER" 2>/dev/null || true
-            docker rm "$CONTAINER" 2>/dev/null || true
-
-            docker run -d \
-              --name "$CONTAINER" \
-              --restart unless-stopped \
-              --network cicd-net \
-              -e APP_ENV=uat \
-              "$IMAGE"
-
-            sleep 8
-            curl --max-time 15 --retry 5 --retry-delay 3 -f -H "Host: uat-cicd.goprimo.ai" http://127.0.0.1/health
-            docker image prune -f
-
+      - name: Push Docker image to GHCR
+        if: github.event_name == 'push'
+        run: |
+          docker push ghcr.io/$OWNER_LC/$IMAGE_NAME:latest
+          docker push ghcr.io/$OWNER_LC/$IMAGE_NAME:${{ github.sha }}
   deploy-prod:
     name: Deploy to Production VM
     runs-on: ubuntu-latest
-    needs: deploy-uat
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Deploy latest image to Production over SSH
+      - name: Deploy latest image to VM over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VM_HOST }}
@@ -131,7 +112,7 @@ jobs:
             set -e
 
             IMAGE="ghcr.io/git-opusone/goprimo-cicd-demo:latest"
-            CONTAINER="goprimo-cicd-demo-prod"
+            CONTAINER="goprimo-cicd-demo"
 
             docker network create cicd-net 2>/dev/null || true
 
@@ -147,6 +128,7 @@ jobs:
               -e APP_ENV=prod \
               "$IMAGE"
 
-            sleep 8
-            curl --max-time 15 --retry 5 --retry-delay 3 -f -H "Host: cicd.goprimo.ai" http://127.0.0.1/health
+            sleep 5
+            curl -f http://goprimo-cicd-demo:3000/health || curl -f http://localhost/health
+
             docker image prune -f
