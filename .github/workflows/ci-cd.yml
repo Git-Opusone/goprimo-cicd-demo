@@ -114,6 +114,8 @@ jobs:
             IMAGE="ghcr.io/git-opusone/goprimo-cicd-demo:latest"
             CONTAINER="goprimo-cicd-demo"
 
+            docker network create cicd-net 2>/dev/null || true
+
             docker pull "$IMAGE"
 
             docker stop "$CONTAINER" 2>/dev/null || true
@@ -122,12 +124,11 @@ jobs:
             docker run -d \
               --name "$CONTAINER" \
               --restart unless-stopped \
-              -p 80:3000 \
+              --network cicd-net \
               -e APP_ENV=prod \
               "$IMAGE"
 
             sleep 5
-            curl -f http://localhost/health
+            curl -f http://goprimo-cicd-demo:3000/health || curl -f http://localhost/health
 
             docker image prune -f
-
