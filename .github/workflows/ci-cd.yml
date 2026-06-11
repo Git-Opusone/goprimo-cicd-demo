@@ -111,8 +111,8 @@ jobs:
               -e APP_ENV=uat \
               "$IMAGE"
 
-            sleep 5
-            curl -f http://goprimo-cicd-demo-uat:3000/health
+            sleep 8
+            curl -f https://uat-cicd.goprimo.ai/health
 
             docker image prune -f
 
@@ -148,7 +148,7 @@ jobs:
               -e APP_ENV=prod \
               "$IMAGE"
 
-            sleep 5
-            curl -f http://goprimo-cicd-demo-prod:3000/health
+            sleep 8
+            curl -f https://cicd.goprimo.ai/health
 
             docker image prune -f
