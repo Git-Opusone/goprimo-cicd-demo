@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+
 permissions:
   contents: read
   packages: write
@@ -51,14 +52,30 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME:latest .
-          docker tag $IMAGE_NAME:latest $IMAGE_NAME:${{ github.sha }}
+          SHORT_SHA=${GITHUB_SHA::7}
+
+          echo "Building Docker image:"
+          echo "Latest tag: $IMAGE_NAME:latest"
+          echo "Version tag: $IMAGE_NAME:$SHORT_SHA"
+
+          docker build \
+            -t $IMAGE_NAME:latest \
+            -t $IMAGE_NAME:$SHORT_SHA \
+            .
 
       - name: Run container smoke test
         run: |
-          docker run -d --name smoke-test -p 3000:3000 $IMAGE_NAME:latest
+          docker rm -f smoke-test 2>/dev/null || true
+
+          docker run -d \
+            --name smoke-test \
+            -p 3000:3000 \
+            $IMAGE_NAME:latest
+
           sleep 5
+
           curl -f http://localhost:3000/health
+
           docker stop smoke-test
           docker rm smoke-test
 
@@ -79,8 +96,14 @@ jobs:
 
       - name: Push Docker image to GHCR
         run: |
+          SHORT_SHA=${GITHUB_SHA::7}
+
+          echo "Pushing Docker image:"
+          echo "$IMAGE_NAME:latest"
+          echo "$IMAGE_NAME:$SHORT_SHA"
+
           docker push $IMAGE_NAME:latest
-          docker push $IMAGE_NAME:${{ github.sha }}
+          docker push $IMAGE_NAME:$SHORT_SHA
 
   deploy-uat:
     name: Deploy to UAT VM
@@ -100,6 +123,8 @@ jobs:
             IMAGE="ghcr.io/git-opusone/goprimo-cicd-demo:latest"
             CONTAINER="goprimo-cicd-demo-uat"
 
+            echo "Deploying UAT image: $IMAGE"
+
             docker network create cicd-net 2>/dev/null || true
 
             docker pull "$IMAGE"
@@ -115,7 +140,10 @@ jobs:
               "$IMAGE"
 
             sleep 8
+
+            echo "Running UAT health check..."
             curl --max-time 15 --retry 5 --retry-delay 3 -f -H "Host: uat-cicd.goprimo.ai" http://127.0.0.1/health
+
             docker image prune -f
 
   deploy-prod:
@@ -127,7 +155,7 @@ jobs:
       url: https://cicd.goprimo.ai
 
     steps:
-      - name: Deploy latest image to Production over SSH
+      - name: Deploy approved image to Production over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VM_HOST }}
@@ -136,8 +164,13 @@ jobs:
           script: |
             set -e
 
-            IMAGE="ghcr.io/git-opusone/goprimo-cicd-demo:latest"
+            SHORT_SHA="${{ github.sha }}"
+            SHORT_SHA="${SHORT_SHA:0:7}"
+
+            IMAGE="ghcr.io/git-opusone/goprimo-cicd-demo:$SHORT_SHA"
             CONTAINER="goprimo-cicd-demo-prod"
+
+            echo "Deploying Production image: $IMAGE"
 
             docker network create cicd-net 2>/dev/null || true
 
@@ -154,5 +187,8 @@ jobs:
               "$IMAGE"
 
             sleep 8
+
+            echo "Running Production health check..."
             curl --max-time 15 --retry 5 --retry-delay 3 -f -H "Host: cicd.goprimo.ai" http://127.0.0.1/health
+
             docker image prune -f
