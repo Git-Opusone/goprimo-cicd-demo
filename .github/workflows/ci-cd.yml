@@ -192,3 +192,6 @@ jobs:
             curl --max-time 15 --retry 5 --retry-delay 3 -f -H "Host: cicd.goprimo.ai" http://127.0.0.1/health
 
             docker image prune -f
+
+
+
