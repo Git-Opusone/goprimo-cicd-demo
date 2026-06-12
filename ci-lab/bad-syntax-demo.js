@@ -1,9 +1,5 @@
-function fixedDemo() {
-  const message = "This syntax is now fixed";
+function brokenDemo() {
+  const message = "This should fail lint or build";
   if (message) {
     console.log(message);
-  }
-}
-
-fixedDemo();
-
+  // Missing closing brace intentionally
