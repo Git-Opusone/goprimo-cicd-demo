@@ -1,4 +1,4 @@
-name: CI - Build, Push, Deploy
+name: CI - Build, Push, Deploy-Manual 
 
 on:
   push:
