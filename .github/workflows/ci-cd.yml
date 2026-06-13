@@ -44,6 +44,12 @@ jobs:
       - name: Run dependency vulnerability audit
         run: npm audit --audit-level=high
 
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
       - name: Scan Dockerfile with Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
