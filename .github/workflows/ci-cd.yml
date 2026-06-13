@@ -53,10 +53,11 @@ jobs:
       - name: Gitleaks Secret Scan
         run: |
           GITLEAKS_VERSION="8.28.0"
-          curl -sSL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          tar -xzf gitleaks.tar.gz
-          chmod +x gitleaks
-          ./gitleaks detect --source . --redact --no-git --verbose
+          mkdir -p /tmp/gitleaks
+          curl -sSL -o /tmp/gitleaks/gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
+          chmod +x /tmp/gitleaks/gitleaks
+          /tmp/gitleaks/gitleaks detect --source "$GITHUB_WORKSPACE" --redact --no-git --verbose
 
       - name: Scan Dockerfile with Hadolint
         uses: hadolint/hadolint-action@v3.1.0
