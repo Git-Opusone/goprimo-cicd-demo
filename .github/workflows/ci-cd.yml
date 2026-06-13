@@ -44,6 +44,12 @@ jobs:
       - name: Run dependency vulnerability audit
         run: npm audit --audit-level=high
 
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
       - name: Scan Dockerfile with Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
@@ -150,6 +156,7 @@ jobs:
     name: Deploy to Production VM
     runs-on: ubuntu-latest
     needs: deploy-uat
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: production
       url: https://cicd.goprimo.ai
@@ -192,3 +199,6 @@ jobs:
             curl --max-time 15 --retry 5 --retry-delay 3 -f -H "Host: cicd.goprimo.ai" http://127.0.0.1/health
 
             docker image prune -f
+
+
+
