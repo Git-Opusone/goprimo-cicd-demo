@@ -50,6 +50,11 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+      - name: Gitleaks Secret Scan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh -s -- -b /usr/local/bin
+          gitleaks detect --source . --redact --no-git --verbose
+
       - name: Scan Dockerfile with Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
