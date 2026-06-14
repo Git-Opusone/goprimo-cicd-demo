@@ -133,14 +133,16 @@ jobs:
 
       - name: Sign Docker image with Cosign
         run: |
-          cosign sign --yes $IMAGE_NAME:${{ github.sha }}
+          SHORT_SHA=${GITHUB_SHA::7}
+          cosign sign --yes $IMAGE_NAME:$SHORT_SHA
 
       - name: Verify Docker image signature
         run: |
+          SHORT_SHA=${GITHUB_SHA::7}
           cosign verify \
             --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            $IMAGE_NAME:${{ github.sha }}
+            $IMAGE_NAME:$SHORT_SHA
 
   deploy-uat:
     name: Deploy to UAT VM
