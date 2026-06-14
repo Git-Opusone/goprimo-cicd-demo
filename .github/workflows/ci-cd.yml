@@ -78,6 +78,13 @@ jobs:
             -t $IMAGE_NAME:$SHORT_SHA \
             .
 
+      - name: Generate SBOM for Docker image
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_NAME }}:latest
+          format: spdx-json
+          artifact-name: goprimo-sbom
+
       - name: Run container smoke test
         run: |
           docker rm -f smoke-test 2>/dev/null || true
