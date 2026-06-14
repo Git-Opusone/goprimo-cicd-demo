@@ -13,6 +13,7 @@ permissions:
   contents: read
   packages: write
   security-events: write
+  id-token: write
 
 env:
   IMAGE_NAME: ghcr.io/git-opusone/goprimo-cicd-demo
@@ -126,6 +127,20 @@ jobs:
 
           docker push $IMAGE_NAME:latest
           docker push $IMAGE_NAME:$SHORT_SHA
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Sign Docker image with Cosign
+        run: |
+          cosign sign --yes $IMAGE_NAME:${{ github.sha }}
+
+      - name: Verify Docker image signature
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            $IMAGE_NAME:${{ github.sha }}
 
   deploy-uat:
     name: Deploy to UAT VM
