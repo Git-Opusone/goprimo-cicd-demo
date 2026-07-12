@@ -19,3 +19,5 @@ Sample Node.js application for learning enterprise-style CI/CD.
 - Grafana Cloud
 - Loki
 - Grafana Alloy
+
+## Sriman Test
