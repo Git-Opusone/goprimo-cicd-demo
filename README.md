@@ -20,4 +20,4 @@ Sample Node.js application for learning enterprise-style CI/CD.
 - Loki
 - Grafana Alloy
 
-## Sriman Test
+## Sriman Test demo for Boss:
