@@ -1,8 +1,6 @@
 const request = require("supertest");
 const app = require("../src/app");
 
-
-
 describe("GoPrimo CI/CD Demo App", () => {
   test("GET / should return app status", async () => {
     const response = await request(app).get("/");
